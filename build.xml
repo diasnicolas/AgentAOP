@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<project name="Agent Java" default="all">
+	<description>
+		Criando um agente para instrumentar métodos,
+		utilizando conceitos de Programação Orientada à Aspectos.
+    </description>
+
+	<target name="all" depends="compile,jar"/>
+	<target name="compile" description="compile classes">
+		<delete dir="bin" />
+		<mkdir dir="bin" />
+		<javac source="1.6"  srcdir="src"   destdir="bin" debug="false" optimize="true" verbose="false" classpath="lib/javassist.jar">
+		</javac>
+	</target>
+	<target name="jar" depends="compile" description="create agent jar">
+		<jar basedir="bin" destfile="../Cobaia/dist/agent.jar" manifest="Manifest.mf" />
+	</target>
+</project>
