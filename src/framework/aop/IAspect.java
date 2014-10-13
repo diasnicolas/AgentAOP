@@ -4,5 +4,5 @@ public interface IAspect {
 	
 	public void before();
 	public void after();
-	public void around(String teste);
+	public void around();
 }
