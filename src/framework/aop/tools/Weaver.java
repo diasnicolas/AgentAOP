@@ -11,14 +11,9 @@ import javassist.CtField;
 import javassist.CtMethod;
 import javassist.CtNewMethod;
 import javassist.NotFoundException;
-import javassist.expr.ExprEditor;
-import javassist.expr.MethodCall;
 
 /*
-	# ADICIONAR INTERCEPTACAO AROUND EM MÉTODOS COM PARAMETROS
-	# ADICIONAR RETORNO DE MÉTODO NO PROCEED
-	# ADICIONAR INFORMAÇÕES COMO PARAMETROS DO BEFORE, AFTER, AROUND
-	# ADICIONAR POSSIBILIDADE DE EXTENSÃO EXEMPLO: @NomeDoAspecto
+	# MAIS DE UM AROUND EM UM MÉTODO
 */
 
 class Weaver {
@@ -26,30 +21,15 @@ class Weaver {
 	private CtBehavior target;
 	private CtClass    aspect;
 	private CtClass    classTarget;
-	private Class<? extends IAspect>    lastAroundMethod;
 	private AdviceType adviceType;
-	public static String lastClassTarget="";
-	public static String copyMethodName="";
 	
 	public Weaver(CtBehavior target, Class<? extends IAspect>  aspect, AdviceType adviceType) 
 			throws NotFoundException
 	{
 		this.target      = target;
-		this.aspect      = ClassPool.getDefault().get(aspect.getSimpleName());
+		this.aspect      = ClassPool.getDefault().get(aspect.getName());
 		this.adviceType  = adviceType;
 		this.classTarget = this.target.getDeclaringClass();
-		
-		if(!this.classTarget.getName().equals(lastClassTarget))
-			Weaver.copyMethodName = "";
-		
-		Weaver.lastClassTarget = this.classTarget.getName();
-	}
-	
-	public Weaver(CtBehavior target, Class<? extends IAspect>  aspect, AdviceType adviceType,Class<? extends IAspect> lastAroundMethod) 
-			throws NotFoundException
-	{
-		this(target, aspect, adviceType);
-		this.lastAroundMethod = lastAroundMethod;
 	}
 	
 	public void combine()
@@ -57,6 +37,13 @@ class Weaver {
 	{	
 		this.addFields();
 		this.addAdviceMethod();
+	}
+	
+	private String createMethodInfo(String variableName,CtBehavior method)
+	{
+		return
+		variableName+"= new framework.aop.structures.MethodExecution(\""
+		+method.getName()+"\",new framework.aop.structures.Params($args,$sig));";
 	}
 	
 	private void addAdviceMethod()
@@ -76,46 +63,35 @@ class Weaver {
 	}
 	
 	private void addBefore(CtMethod adviceMethod)
-			throws CannotCompileException
+			throws CannotCompileException, NotFoundException
 	{
 		this.classTarget.addMethod(adviceMethod);
-		this.target.insertBefore(adviceMethod.getName()+"();");
+		this.target.addLocalVariable("methodExecution",ClassPool.getDefault().get("framework.aop.structures.MethodExecution"));
+		this.target.insertBefore(this.createMethodInfo("methodExecution", this.target)
+				+adviceMethod.getName()+"($0,methodExecution);");
 	}
 	
 	private void addAfter(CtMethod adviceMethod)
-			throws CannotCompileException
+			throws CannotCompileException, NotFoundException
 	{
 		this.classTarget.addMethod(adviceMethod);
-		this.target.insertAfter(adviceMethod.getName()+"();");
+		this.target.addLocalVariable("methodExecution",ClassPool.getDefault().get("framework.aop.structures.MethodExecution"));
+		this.target.insertAfter(this.createMethodInfo("methodExecution", this.target)
+				+adviceMethod.getName()+"($0,methodExecution);");
 	}
 	
 	private void addAround(CtMethod adviceMethod)
-			throws CannotCompileException
+			throws CannotCompileException, NotFoundException
 	{	
 		String copyName = this.target.getName()+"$Copy";
-		
-		if(!Weaver.copyMethodName.equals(copyName))
-		{	
-			Weaver.copyMethodName = copyName;
-			CtMethod copyMethod = CtNewMethod.copy((CtMethod)this.target, Weaver.copyMethodName, this.classTarget, null);
-			this.classTarget.addMethod(copyMethod);
-			
-		}else
-			Weaver.copyMethodName = this.lastAroundMethod.getSimpleName()+"$around$"+this.target.getName();
-		
-		adviceMethod.instrument(new ExprEditor() {
-			
-		     public void edit(MethodCall m) throws CannotCompileException {
-		    	 
-		    	 if (m.getMethodName().equals("proceed") &&
-		        	 m.getClassName().equals("framework.aop.structures.CurrentMethod")) {
-		    		 m.replace(Weaver.copyMethodName+"();");
-		         }
-		     }
-		 });
+
+		CtMethod copyMethod = CtNewMethod.copy((CtMethod)this.target, copyName, this.classTarget, null);
+		this.classTarget.addMethod(copyMethod);
 		
 		this.classTarget.addMethod(adviceMethod);
-		this.target.setBody("{"+adviceMethod.getName()+"();}");
+		this.target.setBody("{framework.aop.structures.MethodExecution "+this.createMethodInfo("methodExecution", this.target)
+			    			+"return ($r)"+adviceMethod.getName()+"($0,methodExecution);}");
+		
 	}
 	
 	private CtMethod createMethod() 

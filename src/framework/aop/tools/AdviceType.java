@@ -1,6 +1,6 @@
 package framework.aop.tools;
 
-enum AdviceType {
+public enum AdviceType {
 	
 	Before, After, Around;
 }

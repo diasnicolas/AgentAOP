@@ -5,11 +5,14 @@ import java.lang.instrument.ClassFileTransformer;
 import java.lang.instrument.Instrumentation;
 import java.lang.reflect.Method;
 import java.security.ProtectionDomain;
+
+import framework.aop.IAspect;
+import framework.aop.annotations.Extension;
+
 import javassist.ClassPool;
 import javassist.CtBehavior;
 import javassist.CtClass;
 import javassist.NotFoundException;
-import framework.aop.IAspect;
 
 class Agent {
 
@@ -20,14 +23,14 @@ class Agent {
 
 class AOPClassFileTransformer implements ClassFileTransformer {
 
-	private String[] ignore = new String[] { "sun/", "java/", "javax/" };
+	private String[] ignoredPackages = new String[] { "sun/", "java/", "javax/" };
 
 	public byte[] transform(ClassLoader loader, String className,
 			Class<?> classBeingRedefined, ProtectionDomain protectionDomain,
 			byte[] classfileBuffer) {
 
-		for (int i = 0; i < ignore.length; i++) {
-			if (className.startsWith(ignore[i])) {
+		for (int i = 0; i < ignoredPackages.length; i++) {
+			if (className.startsWith(ignoredPackages[i])) {
 				return classfileBuffer;
 			}
 		}
@@ -60,13 +63,19 @@ class AOPClassFileTransformer implements ClassFileTransformer {
 	
 	private void addAdviceIfAnnotated(Annotation annotation, CtBehavior behavior) throws NotFoundException
 	{
-		String typeAnnotation = annotation.annotationType().getSimpleName();
-		
-		if(typeAnnotation.equals("Before") ||
-		   typeAnnotation.equals("After")  ||
-		   typeAnnotation.equals("Around"))
+		String typeAnnotation = annotation.annotationType().getName();
+
+		if(typeAnnotation.equals("framework.aop.annotations.Before") ||
+		   typeAnnotation.equals("framework.aop.annotations.After")  ||
+		   typeAnnotation.equals("framework.aop.annotations.Around"))
 		{	
-			this.addAdvice(annotation, behavior);
+			this.addAdvice(annotation, behavior);	
+		}else
+		{	
+			Annotation a = annotation.annotationType().getAnnotation(Extension.class);
+			
+			if(a!=null)
+				this.addExtension((Extension)a, behavior);
 		}
 	}
 	
@@ -75,25 +84,29 @@ class AOPClassFileTransformer implements ClassFileTransformer {
 		String typeAnnotation = annotation.annotationType().getSimpleName();
 		AdviceType adviceType = AdviceType.valueOf(typeAnnotation);
 		
-		Class<? extends IAspect> lastAround=null;
-		
-		
-		
 		for(Class<? extends IAspect> aspect : this.getListOfAspects(annotation))
 		{	
 			try
-			{	Weaver weaver;
-				if(adviceType.equals(AdviceType.Around) && lastAround != null)
-					weaver = new Weaver(behavior,aspect,adviceType,lastAround);
-				else
-					weaver = new Weaver(behavior,aspect,adviceType);
+			{	
+				Weaver weaver = new Weaver(behavior,aspect,adviceType);
 				weaver.combine();
 				
 			}catch(Exception e)
 			{
 				System.err.println(e.getMessage());
 			}
-			lastAround = aspect;
+		}
+	}
+	
+	private void addExtension(Extension extension, CtBehavior behavior)
+	{
+		try
+		{	
+			Weaver weaver = new Weaver(behavior,extension.aspect(),extension.adviceType());
+			weaver.combine();
+		}catch(Exception e)
+		{
+			System.err.println(e.getMessage());
 		}
 	}
 	
