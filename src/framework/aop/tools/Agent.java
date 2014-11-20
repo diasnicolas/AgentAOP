@@ -7,6 +7,7 @@ import java.lang.reflect.Method;
 import java.security.ProtectionDomain;
 
 import framework.aop.IAspect;
+import framework.aop.annotations.AdviceType;
 import framework.aop.annotations.Extension;
 
 import javassist.ClassPool;
@@ -44,7 +45,7 @@ class AOPClassFileTransformer implements ClassFileTransformer {
 			cl = pool.makeClass(new java.io.ByteArrayInputStream(b));
 			
 			for(CtBehavior behavior : cl.getDeclaredBehaviors())
-			{
+			{	
 				for(Object a : behavior.getAnnotations())
 				{
 					this.addAdviceIfAnnotated((Annotation)a, behavior);

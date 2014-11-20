@@ -2,6 +2,7 @@ package framework.aop.tools;
 
 import java.lang.annotation.Annotation;
 import framework.aop.IAspect;
+import framework.aop.annotations.AdviceType;
 import framework.aop.annotations.Initialize;
 import javassist.CannotCompileException;
 import javassist.ClassPool;
@@ -109,7 +110,7 @@ class Weaver {
 		for(CtField field : this.aspect.getDeclaredFields())
 		{
 			try
-			{
+			{	
 				this.classTarget.getDeclaredField(field.getName());
 				
 			}catch(Exception e)

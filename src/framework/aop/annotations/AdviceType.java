@@ -1,4 +1,4 @@
-package framework.aop.tools;
+package framework.aop.annotations;
 
 public enum AdviceType {
 	
