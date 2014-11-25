@@ -16,7 +16,7 @@ import javassist.CtClass;
 import javassist.NotFoundException;
 
 class Agent {
-
+	
 	public static void premain(String agentArgs, Instrumentation inst) {
 		inst.addTransformer(new AOPClassFileTransformer());
 	}
@@ -24,25 +24,25 @@ class Agent {
 
 class AOPClassFileTransformer implements ClassFileTransformer {
 
-	private String[] ignoredPackages = new String[] { "sun/", "java/", "javax/" };
-
 	public byte[] transform(ClassLoader loader, String className,
 			Class<?> classBeingRedefined, ProtectionDomain protectionDomain,
 			byte[] classfileBuffer) {
+		
+		String[] ignoredPackages = new String[] { "sun/", "java/", "javax/" };
 
 		for (int i = 0; i < ignoredPackages.length; i++) {
 			if (className.startsWith(ignoredPackages[i])) {
 				return classfileBuffer;
 			}
 		}
-		return processClass(className, classBeingRedefined, classfileBuffer);
+		return processClass(className, classfileBuffer);
 	}
 
-	private byte[] processClass(String clazzName, Class<?> clazz, byte[] b) {
+	private byte[] processClass(String clazzName, byte[] bytes) {
 		ClassPool pool = ClassPool.getDefault();
 		CtClass cl = null;
 		try {
-			cl = pool.makeClass(new java.io.ByteArrayInputStream(b));
+			cl = pool.makeClass(new java.io.ByteArrayInputStream(bytes));
 			
 			for(CtBehavior behavior : cl.getDeclaredBehaviors())
 			{	
@@ -51,7 +51,7 @@ class AOPClassFileTransformer implements ClassFileTransformer {
 					this.addAdviceIfAnnotated((Annotation)a, behavior);
 				}
 			}
-			b = cl.toBytecode();
+			bytes = cl.toBytecode();
 
 		} catch (Exception e) {
 			System.err.println("Não foi possível modificar a classe " + clazzName
@@ -59,10 +59,11 @@ class AOPClassFileTransformer implements ClassFileTransformer {
 		} finally {
 			 if (cl != null) cl.detach();
 		}
-		return b;
+		return bytes;
 	}
 	
-	private void addAdviceIfAnnotated(Annotation annotation, CtBehavior behavior) throws NotFoundException
+	private void addAdviceIfAnnotated(Annotation annotation, CtBehavior behavior) 
+			throws NotFoundException
 	{
 		String typeAnnotation = annotation.annotationType().getName();
 
@@ -70,17 +71,17 @@ class AOPClassFileTransformer implements ClassFileTransformer {
 		   typeAnnotation.equals("framework.aop.annotations.After")  ||
 		   typeAnnotation.equals("framework.aop.annotations.Around"))
 		{	
-			this.addAdvice(annotation, behavior);	
+			this.addNativeAdvice(annotation, behavior);	
 		}else
 		{	
 			Annotation a = annotation.annotationType().getAnnotation(Extension.class);
 			
 			if(a!=null)
-				this.addExtension((Extension)a, behavior);
+				this.addExtensionAdvice((Extension)a, behavior);
 		}
 	}
 	
-	private void addAdvice(Annotation annotation, CtBehavior behavior) 
+	private void addNativeAdvice(Annotation annotation, CtBehavior behavior) 
 	{	
 		String typeAnnotation = annotation.annotationType().getSimpleName();
 		AdviceType adviceType = AdviceType.valueOf(typeAnnotation);
@@ -99,12 +100,13 @@ class AOPClassFileTransformer implements ClassFileTransformer {
 		}
 	}
 	
-	private void addExtension(Extension extension, CtBehavior behavior)
+	private void addExtensionAdvice(Extension extension, CtBehavior behavior)
 	{
 		try
 		{	
 			Weaver weaver = new Weaver(behavior,extension.aspect(),extension.adviceType());
 			weaver.combine();
+			
 		}catch(Exception e)
 		{
 			System.err.println(e.getMessage());
