@@ -34,74 +34,12 @@ class Weaver {
 	}
 	
 	public void combine()
-			throws ClassNotFoundException, CannotCompileException, NotFoundException
+			throws ClassNotFoundException, 
+			        CannotCompileException, 
+			        NotFoundException
 	{	
 		this.addFields();
 		this.addAdviceMethod();
-	}
-	
-	private String createMethodInfo(String variableName,CtBehavior method)
-	{
-		return
-		variableName+"= new framework.aop.structures.MethodExecution(\""
-		+method.getName()+"\",new framework.aop.structures.Params($args,$sig));";
-	}
-	
-	private void addAdviceMethod()
-			throws CannotCompileException, NotFoundException
-	{
-		CtMethod adviceMethod = this.createMethod();
-		
-		switch(this.adviceType)
-		{
-			case Before: this.addBefore(adviceMethod);
-				break;
-			case After: this.addAfter(adviceMethod);
-				break;
-			case Around: this.addAround(adviceMethod);
-				break;
-		}
-	}
-	
-	private void addBefore(CtMethod adviceMethod)
-			throws CannotCompileException, NotFoundException
-	{
-		this.classTarget.addMethod(adviceMethod);
-		this.target.addLocalVariable("methodExecution",ClassPool.getDefault().get("framework.aop.structures.MethodExecution"));
-		this.target.insertBefore(this.createMethodInfo("methodExecution", this.target)
-				+adviceMethod.getName()+"($0,methodExecution);");
-	}
-	
-	private void addAfter(CtMethod adviceMethod)
-			throws CannotCompileException, NotFoundException
-	{
-		this.classTarget.addMethod(adviceMethod);
-		this.target.addLocalVariable("methodExecution",ClassPool.getDefault().get("framework.aop.structures.MethodExecution"));
-		this.target.insertAfter(this.createMethodInfo("methodExecution", this.target)
-				+adviceMethod.getName()+"($0,methodExecution);");
-	}
-	
-	private void addAround(CtMethod adviceMethod)
-			throws CannotCompileException, NotFoundException
-	{	
-		String copyName = this.target.getName()+"$Copy";
-
-		CtMethod copyMethod = CtNewMethod.copy((CtMethod)this.target, copyName, this.classTarget, null);
-		this.classTarget.addMethod(copyMethod);
-		
-		this.classTarget.addMethod(adviceMethod);
-		this.target.setBody("{framework.aop.structures.MethodExecution "+this.createMethodInfo("methodExecution", this.target)
-			    			+"return ($r)"+adviceMethod.getName()+"($0,methodExecution);}");
-		
-	}
-	
-	private CtMethod createMethod() 
-			throws CannotCompileException, NotFoundException
-	{	
-		String advice = this.adviceType.toString().toLowerCase();
-		String methodName = this.aspect.getSimpleName()+"$"+advice+"$"+this.target.getName();
-		return CtNewMethod.copy(aspect.getDeclaredMethod(advice), 
-											     methodName, this.classTarget, null);
 	}
 	
 	private void addFields() 
@@ -145,5 +83,81 @@ class Weaver {
 			}
 		}
 		return value;
+	}
+	
+	private void addAdviceMethod()
+			throws CannotCompileException, NotFoundException
+	{
+		CtMethod adviceMethod = this.createMethod();
+		
+		switch(this.adviceType)
+		{
+			case Before: this.addBefore(adviceMethod);
+				break;
+			case After: this.addAfter(adviceMethod);
+				break;
+			case Around: this.addAround(adviceMethod);
+				break;
+		}
+	}
+	
+	private void addBefore(CtMethod adviceMethod)
+			throws CannotCompileException, 
+			        NotFoundException
+	{
+		this.classTarget.addMethod(adviceMethod);
+		this.target.addLocalVariable("methodExecution",
+		ClassPool.getDefault().get("framework.aop.structures.MethodExecution"));
+		this.target.insertBefore(
+				this.createMethodInfo("methodExecution", this.target)
+				+adviceMethod.getName()+"($0,methodExecution);");
+	}
+	
+	private void addAfter(CtMethod adviceMethod)
+			throws CannotCompileException, 
+			        NotFoundException
+	{
+		this.classTarget.addMethod(adviceMethod);
+		this.target.addLocalVariable("methodExecution",
+		ClassPool.getDefault().get("framework.aop.structures.MethodExecution"));
+		this.target.insertAfter(
+				this.createMethodInfo("methodExecution", this.target)
+				+adviceMethod.getName()+"($0,methodExecution);");
+	}
+	
+	private void addAround(CtMethod adviceMethod)
+			throws CannotCompileException, 
+			        NotFoundException
+	{	
+		String copyName = this.target.getName()+"$Copy";
+
+		CtMethod copyMethod = CtNewMethod.copy((CtMethod)this.target, 
+												copyName, this.classTarget,
+												null);
+		this.classTarget.addMethod(copyMethod);
+		
+		this.classTarget.addMethod(adviceMethod);
+		this.target.setBody("{framework.aop.structures.MethodExecution "+
+							this.createMethodInfo("methodExecution", this.target)
+			    			+"return ($r)"+adviceMethod.getName()+
+			    			"($0,methodExecution);}");
+	}
+	
+	private String createMethodInfo(String variableName,CtBehavior method)
+	{
+		return
+		variableName+"= new framework.aop.structures.MethodExecution(\""
+		+method.getName()+"\",new framework.aop.structures.Params($args,$sig));";
+	}
+	
+	private CtMethod createMethod() 
+			throws CannotCompileException, 
+					NotFoundException
+	{	
+		String advice = this.adviceType.toString().toLowerCase();
+		String methodName = this.aspect.getSimpleName()+"$"+advice+"$"+
+							this.target.getName();
+		return CtNewMethod.copy(aspect.getDeclaredMethod(advice), 
+								methodName, this.classTarget, null);
 	}
 }
