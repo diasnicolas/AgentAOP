@@ -26,10 +26,10 @@ class AOPClassFileTransformer implements ClassFileTransformer {
 
 	public byte[] transform(ClassLoader loader, String className,
 			Class<?> classBeingRedefined, ProtectionDomain protectionDomain,
-			byte[] classfileBuffer) {
+			byte[] classfileBuffer ) {
 		
 		String[] ignoredPackages = new String[] { "sun/", "java/", "javax/" };
-
+		
 		for (int i = 0; i < ignoredPackages.length; i++) {
 			if (className.startsWith(ignoredPackages[i])) {
 				return classfileBuffer;
@@ -41,17 +41,15 @@ class AOPClassFileTransformer implements ClassFileTransformer {
 	private byte[] processClass(String clazzName, byte[] bytes) {
 		ClassPool pool = ClassPool.getDefault();
 		CtClass cl = null;
+		byte[] bts={};
 		try {
 			cl = pool.makeClass(new java.io.ByteArrayInputStream(bytes));
-			
-			for(CtBehavior behavior : cl.getDeclaredBehaviors())
-			{	
+		
+			for(CtBehavior behavior : cl.getDeclaredBehaviors())	
 				for(Object a : behavior.getAnnotations())
-				{
 					this.addAdviceIfAnnotated((Annotation)a, behavior);
-				}
-			}
-			bytes = cl.toBytecode();
+			
+			bts = cl.toBytecode();
 
 		} catch (Exception e) {
 			System.err.println("Não foi possível modificar a classe " + clazzName
@@ -59,14 +57,14 @@ class AOPClassFileTransformer implements ClassFileTransformer {
 		} finally {
 			 if (cl != null) cl.detach();
 		}
-		return bytes;
+		return bts;
 	}
 	
 	private void addAdviceIfAnnotated(Annotation annotation, CtBehavior behavior) 
 			throws NotFoundException
 	{
 		String typeAnnotation = annotation.annotationType().getName();
-
+		
 		if(typeAnnotation.equals("framework.aop.annotations.Before") ||
 		   typeAnnotation.equals("framework.aop.annotations.After")  ||
 		   typeAnnotation.equals("framework.aop.annotations.Around"))
